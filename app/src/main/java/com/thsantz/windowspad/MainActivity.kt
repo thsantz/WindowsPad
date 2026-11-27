@@ -4,6 +4,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.ImageView
@@ -50,12 +52,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 private data class PadApp(val name: String, val pkg: String, val icon: Drawable)
 
 class MainActivity : ComponentActivity() {
     private val apps = mutableStateListOf<PadApp>()
     private val recentPackages = mutableStateListOf<String>()
+    private val appLoader = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val loadingApps = AtomicBoolean(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,14 +123,39 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadApps() {
-        apps.clear()
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        @Suppress("DEPRECATION")
-        packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL).forEach {
-            val p = it.activityInfo.packageName
-            if (p != packageName) apps.add(PadApp(it.loadLabel(packageManager).toString(), p, it.loadIcon(packageManager)))
+        if (!loadingApps.compareAndSet(false, true)) return
+        appLoader.execute {
+            val loaded = runCatching {
+                val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                @Suppress("DEPRECATION")
+                packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+                    .asSequence()
+                    .filter { it.activityInfo.packageName != packageName }
+                    .map { info ->
+                        PadApp(info.loadLabel(packageManager).toString(), info.activityInfo.packageName, info.loadIcon(packageManager))
+                    }
+                    .sortedBy { it.name.lowercase(Locale.getDefault()) }
+                    .toList()
+            }.getOrDefault(emptyList())
+            mainHandler.post {
+                if (!isFinishing && !isDestroyed && loaded.isNotEmpty()) {
+                    val oldKeys = apps.map { it.pkg to it.name }
+                    val newKeys = loaded.map { it.pkg to it.name }
+                    if (oldKeys != newKeys) {
+                        apps.clear()
+                        apps.addAll(loaded)
+                    } else if (apps.isEmpty()) {
+                        apps.addAll(loaded)
+                    }
+                }
+                loadingApps.set(false)
+            }
         }
-        apps.sortBy { it.name.lowercase(Locale.getDefault()) }
+    }
+
+    override fun onDestroy() {
+        appLoader.shutdown()
+        super.onDestroy()
     }
 
     private fun openApp(app: PadApp) {
@@ -291,68 +323,119 @@ private fun TabletHome(
     onOpen: (PadApp) -> Unit, onDrawer: () -> Unit, onAssistant: () -> Unit, onDex: () -> Unit, onSettings: () -> Unit, onWallpaper: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth >= 760.dp
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = if (wide) 26.dp else 18.dp)) {
-            Row(Modifier.fillMaxWidth().height(if (wide) 76.dp else 68.dp), verticalAlignment = Alignment.CenterVertically) {
+        val wide = maxWidth >= 840.dp
+        val horizontal = if (wide) 34.dp else 20.dp
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+                .padding(start = horizontal, end = horizontal, top = 12.dp, bottom = 8.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("WINDOWS PAD", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                    Text("Bom ter você aqui.", color = ink, fontSize = if (wide) 24.sp else 21.sp, fontWeight = FontWeight.SemiBold)
+                    Text("WINDOWS PAD", color = Color(0xFF9BC5FF), fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold, letterSpacing = 2.4.sp)
+                    Text("Seu espaço. Do seu jeito.", color = Color.White,
+                        fontSize = if (wide) 27.sp else 23.sp, fontWeight = FontWeight.SemiBold)
                 }
-                Surface(onClick = onDex, shape = CircleShape, color = card) {
-                    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.DesktopWindows, null, tint = accent, modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(7.dp)); Text("Modo DeX", color = ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Surface(
+                    onClick = onDex, color = Color.White.copy(alpha = .12f),
+                    shape = RoundedCornerShape(50), border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(.14f))
+                ) {
+                    Row(Modifier.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.DesktopWindows, null, tint = Color(0xFFB8D6FF), modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text("Desktop", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    onClick = onSettings, color = Color.White.copy(alpha = .12f), shape = CircleShape,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(.14f))
+                ) {
+                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Settings, "Configurações", tint = Color.White, modifier = Modifier.size(19.dp))
                     }
                 }
             }
-            if (wide) {
-                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        HomeHero(accent)
-                        Spacer(Modifier.height(18.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            FeatureCard("Windows Pad AI", "Pesquisa e comandos", "✦", accent, card, ink, muted, Modifier.weight(1f), onAssistant)
-                            FeatureCard("Aplicativos", "Toda a sua biblioteca", "▦", accent, card, ink, muted, Modifier.weight(1f), onDrawer)
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        AppSection(apps, ink, accent, onOpen, onDrawer, Modifier.weight(1f))
-                    }
-                    Column(Modifier.width(210.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text("CENTRAL", color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
-                        SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
-                        SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
-                        SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
-                        Spacer(Modifier.weight(1f))
-                        Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp)
-                    }
+            Spacer(Modifier.height(if (wide) 30.dp else 22.dp))
+            Surface(
+                onClick = onDrawer, color = Color.White.copy(alpha = .13f), shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(.16f))
+            ) {
+                Row(Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Search, null, tint = Color.White.copy(.82f), modifier = Modifier.size(21.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Pesquisar aplicativos", color = Color.White.copy(.78f), fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text("ABRIR", color = Color(0xFFB8D6FF), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 }
-                HomeDock(apps, recentPackages, card, accent, onOpen, onDrawer)
+            }
+            Spacer(Modifier.height(if (wide) 30.dp else 24.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("ACESSO RÁPIDO", color = Color.White.copy(.62f), fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
+                    Text("Seus aplicativos", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Text("${apps.size} apps", color = Color.White.copy(.65f), fontSize = 11.sp)
+            }
+            Spacer(Modifier.height(12.dp))
+            if (apps.isEmpty()) {
+                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF9BC5FF), strokeWidth = 2.dp)
+                }
             } else {
-                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
-                    HomeHero(accent, compact = true)
-                    Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        FeatureCard("Windows Pad AI", "Pesquisa e comandos", "✦", accent, card, ink, muted, Modifier.weight(1f), onAssistant)
-                        FeatureCard("Aplicativos", "Toda a sua biblioteca", "▦", accent, card, ink, muted, Modifier.weight(1f), onDrawer)
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(if (wide) 104.dp else 82.dp),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (wide) 12.dp else 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(apps.take(if (wide) 30 else 24), key = { it.pkg }) { app ->
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                                .clickable { onOpen(app) }.padding(vertical = 12.dp, horizontal = 5.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            AppIcon(app, if (wide) 48 else 44)
+                            Spacer(Modifier.height(9.dp))
+                            Text(app.name, color = Color.White.copy(.94f), fontSize = 11.sp,
+                                maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis,
+                                lineHeight = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        }
                     }
-                    Spacer(Modifier.height(18.dp))
-                    AppSection(apps, ink, accent, onOpen, onDrawer, Modifier.fillMaxWidth(), compact = true)
-                    Spacer(Modifier.height(18.dp))
-                    Text("CENTRAL", color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                    Spacer(Modifier.height(10.dp))
-                    SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
-                    Spacer(Modifier.height(9.dp))
-                    SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
-                    Spacer(Modifier.height(9.dp))
-                    SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
-                    Spacer(Modifier.height(9.dp))
-                    SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
-                    Spacer(Modifier.height(12.dp))
-                    Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
-                    Spacer(Modifier.height(12.dp))
                 }
-                HomeDock(apps, recentPackages, card, accent, onOpen, onDrawer)
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    onClick = onAssistant, color = Color.White.copy(.14f), shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(.15f))
+                ) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("✦", color = Color(0xFFB8D6FF), fontSize = 18.sp)
+                        Spacer(Modifier.width(9.dp))
+                        Column {
+                            Text("Windows Pad AI", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Comandos e pesquisa", color = Color.White.copy(.65f), fontSize = 10.sp)
+                        }
+                    }
+                }
+                Surface(
+                    onClick = onWallpaper, color = Color.White.copy(.14f), shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(.15f))
+                ) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.DarkMode, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text("Visual", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Surface(onClick = onDrawer, color = Color(0xFF8DBBFF), shape = RoundedCornerShape(16.dp)) {
+                    Icon(Icons.Default.Apps, "Todos os aplicativos", tint = Color(0xFF10233F),
+                        modifier = Modifier.padding(15.dp).size(20.dp))
+                }
             }
         }
     }
