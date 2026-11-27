@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppIcon(app: PadApp, size: Int, modifier: Modifier = Modifier) {
-    AndroidView(modifier.size(size.dp), factory = { ctx ->
+    AndroidView(modifier = modifier.size(size.dp), factory = { ctx ->
         ImageView(ctx).apply { scaleType = ImageView.ScaleType.FIT_CENTER; setImageDrawable(app.icon) }
     }, update = { it.setImageDrawable(app.icon) })
 }
@@ -207,7 +207,7 @@ private fun TabletHome(
                 }
                 Spacer(Modifier.height(8.dp))
                 LazyVerticalGrid(columns = GridCells.Adaptive(84.dp), modifier = Modifier.weight(1f)) {
-                    items(apps.take(14)) { AppTile(it, ink) { onOpen(it) } }
+                    items(apps.take(14)) { AppTile(it, ink, onClick = { onOpen(it) }) }
                 }
             }
             Column(Modifier.width(210.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -275,7 +275,7 @@ private fun DexDesktop(
                     OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), placeholder = { Text("Pesquisar aplicativos") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
                     Spacer(Modifier.height(10.dp))
                     LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.heightIn(max = 390.dp)) {
-                        items(apps.filter { it.name.contains(search, true) }.take(28)) { AppTile(it, Color.White) { onOpen(it); startOpen = false } }
+                        items(apps.filter { it.name.contains(search, true) }.take(28)) { AppTile(it, Color.White, onClick = { onOpen(it); startOpen = false }) }
                     }
                 }
             }
