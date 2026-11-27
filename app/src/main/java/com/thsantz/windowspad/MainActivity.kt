@@ -335,7 +335,7 @@ private fun AppDrawer(apps: List<PadApp>, ink: Color, muted: Color, card: Color,
                 val filtered = apps.filter { it.name.contains(search, true) }
                 Text("${filtered.size} aplicativos", color = muted, fontSize = 11.sp)
                 LazyVerticalGrid(columns = GridCells.Adaptive(92.dp), modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
-                    items(filtered) { AppTile(it, ink) { onOpen(it) } }
+                    items(filtered) { AppTile(it, ink, onClick = { onOpen(it) }) }
                 }
             }
         }
