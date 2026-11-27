@@ -280,11 +280,11 @@ private fun AppSection(
         Spacer(Modifier.height(8.dp))
         if (compact) {
             LazyVerticalGrid(columns = GridCells.Adaptive(76.dp), modifier = Modifier.fillMaxWidth().height(270.dp), userScrollEnabled = false) {
-                items(apps.take(12)) { AppTile(it, ink, onClick = { onOpen(it) }) }
+                items(apps.take(12), key = { it.pkg }) { AppTile(it, ink, onClick = { onOpen(it) }) }
             }
         } else {
             LazyVerticalGrid(columns = GridCells.Adaptive(84.dp), modifier = Modifier.fillMaxSize()) {
-                items(apps.take(14)) { AppTile(it, ink, onClick = { onOpen(it) }) }
+                items(apps.take(14), key = { it.pkg }) { AppTile(it, ink, onClick = { onOpen(it) }) }
             }
         }
     }
@@ -331,7 +331,7 @@ private fun DexDesktop(
     var startOpen by remember { mutableStateOf(false) }
     var panelOpen by remember { mutableStateOf(false) }
     val desktopApps = (recentPackages.mapNotNull { pkg -> apps.firstOrNull { it.pkg == pkg } } + apps).distinctBy { it.pkg }.take(12)
-    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF08172F), Color(0xFF173C68), Color(0xFF245B8C))))) {
+    Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().background(Brush.linearGradient(listOf(Color(0xFF08172F), Color(0xFF173C68), Color(0xFF245B8C))))) {
         Row(Modifier.fillMaxSize().padding(start = 22.dp, top = 20.dp, bottom = 82.dp)) {
             Column(Modifier.width(104.dp)) { desktopApps.forEach { AppTile(it, Color.White, { onOpen(it) }, true) } }
             Column(Modifier.fillMaxSize().padding(start = 20.dp)) {
@@ -349,7 +349,7 @@ private fun DexDesktop(
                     OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), placeholder = { Text("Pesquisar aplicativos") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
                     Spacer(Modifier.height(10.dp))
                     LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.heightIn(max = 390.dp)) {
-                        items(apps.filter { it.name.contains(search, true) }.take(28)) { AppTile(it, Color.White, onClick = { onOpen(it); startOpen = false }) }
+                        items(apps.filter { it.name.contains(search, true) }.take(28), key = { it.pkg }) { AppTile(it, Color.White, onClick = { onOpen(it); startOpen = false }) }
                     }
                 }
             }
@@ -409,7 +409,7 @@ private fun AppDrawer(apps: List<PadApp>, ink: Color, muted: Color, card: Color,
                 val filtered = apps.filter { it.name.contains(search, true) }
                 Text("${filtered.size} aplicativos", color = muted, fontSize = 11.sp)
                 LazyVerticalGrid(columns = GridCells.Adaptive(92.dp), modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
-                    items(filtered) { AppTile(it, ink, onClick = { onOpen(it) }) }
+                    items(filtered, key = { it.pkg }) { AppTile(it, ink, onClick = { onOpen(it) }) }
                 }
             }
         }
