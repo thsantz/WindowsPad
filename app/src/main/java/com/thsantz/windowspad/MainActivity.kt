@@ -6,6 +6,7 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.widget.ImageView
@@ -63,6 +64,7 @@ class MainActivity : ComponentActivity() {
     private val appLoader = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val loadingApps = AtomicBoolean(false)
+    @Volatile private var lastAppsRefresh = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +93,9 @@ class MainActivity : ComponentActivity() {
                             onOpen = ::openApp,
                             onAssistant = { assistant = true },
                             onTablet = { dex = false; prefs.edit().putBoolean("dex_mode", false).apply() },
-                            onSettings = { openSettings(Settings.ACTION_SETTINGS) })
+                            onSettings = { openSettings(Settings.ACTION_SETTINGS) },
+                            onWifi = { openSettings(Settings.ACTION_WIFI_SETTINGS) },
+                            onBluetooth = { openSettings(Settings.ACTION_BLUETOOTH_SETTINGS) })
                     } else {
                         TabletHome(apps, recentPackages, card, ink, muted, accent,
                             onWallpaper = { wallpaperPicker = true },
@@ -119,7 +123,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadApps()
+        if (SystemClock.elapsedRealtime() - lastAppsRefresh > 30_000L) loadApps()
     }
 
     private fun loadApps() {
@@ -138,6 +142,7 @@ class MainActivity : ComponentActivity() {
                     .toList()
             }.getOrDefault(emptyList())
             mainHandler.post {
+                lastAppsRefresh = SystemClock.elapsedRealtime()
                 if (!isFinishing && !isDestroyed && loaded.isNotEmpty()) {
                     val oldKeys = apps.map { it.pkg to it.name }
                     val newKeys = loaded.map { it.pkg to it.name }
@@ -304,7 +309,7 @@ private fun WallpaperPicker(selected: String, onSelect: (String) -> Unit, onClos
 private fun AppIcon(app: PadApp, size: Int, modifier: Modifier = Modifier) {
     AndroidView(modifier = modifier.size(size.dp), factory = { ctx ->
         ImageView(ctx).apply { scaleType = ImageView.ScaleType.FIT_CENTER; setImageDrawable(app.icon) }
-    }, update = { it.setImageDrawable(app.icon) })
+    }, update = { view -> if (view.drawable !== app.icon) view.setImageDrawable(app.icon) })
 }
 
 @Composable
@@ -515,11 +520,13 @@ private fun SideCard(title: String, sub: String, icon: androidx.compose.ui.graph
 @Composable
 private fun DexDesktop(
     apps: List<PadApp>, recentPackages: List<String>, ink: Color, muted: Color, accent: Color,
-    onOpen: (PadApp) -> Unit, onAssistant: () -> Unit, onTablet: () -> Unit, onSettings: () -> Unit
+    onOpen: (PadApp) -> Unit, onAssistant: () -> Unit, onTablet: () -> Unit,
+    onSettings: () -> Unit, onWifi: () -> Unit, onBluetooth: () -> Unit
 ) {
     var search by remember { mutableStateOf("") }
     var startOpen by remember { mutableStateOf(false) }
     var panelOpen by remember { mutableStateOf(false) }
+    BackHandler(startOpen || panelOpen) { startOpen = false; panelOpen = false }
     val desktopApps = (recentPackages.mapNotNull { pkg -> apps.firstOrNull { it.pkg == pkg } } + apps).distinctBy { it.pkg }.take(12)
     Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().background(Brush.linearGradient(listOf(Color(0xFF08172F), Color(0xFF173C68), Color(0xFF245B8C))))) {
         Row(Modifier.fillMaxSize().padding(start = 22.dp, top = 20.dp, bottom = 82.dp)) {
@@ -549,9 +556,9 @@ private fun DexDesktop(
                 Column(Modifier.width(290.dp).padding(18.dp)) {
                     Text("Central de controle", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    QuickControl("Wi-Fi", Icons.Default.Wifi, onSettings)
+                    QuickControl("Wi-Fi", Icons.Default.Wifi, onWifi)
                     Spacer(Modifier.height(8.dp))
-                    QuickControl("Bluetooth", Icons.Default.Bluetooth, onSettings)
+                    QuickControl("Bluetooth", Icons.Default.Bluetooth, onBluetooth)
                     Spacer(Modifier.height(8.dp))
                     QuickControl("Configurações", Icons.Default.Settings, onSettings)
                     Spacer(Modifier.height(8.dp))
