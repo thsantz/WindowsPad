@@ -67,6 +67,8 @@ class MainActivity : ComponentActivity() {
             var dex by remember { mutableStateOf(prefs.getBoolean("dex_mode", false)) }
             var drawer by remember { mutableStateOf(false) }
             var assistant by remember { mutableStateOf(false) }
+            var wallpaper by remember { mutableStateOf(prefs.getString("wallpaper", "space") ?: "space") }
+            var wallpaperPicker by remember { mutableStateOf(false) }
             val dark = isSystemInDarkTheme()
             val bg = if (dark) Color(0xFF10151F) else Color(0xFFF3F5F9)
             val ink = if (dark) Color(0xFFF2F5FC) else Color(0xFF17243A)
@@ -76,6 +78,7 @@ class MainActivity : ComponentActivity() {
             BackHandler(drawer || assistant) { drawer = false; assistant = false }
             MaterialTheme(colorScheme = if (dark) darkColorScheme(primary = accent) else lightColorScheme(primary = accent)) {
                 Surface(Modifier.fillMaxSize(), color = bg) {
+                    if (!dex) WallpaperBackground(wallpaper, Modifier.fillMaxSize())
                     if (dex) {
                         DexDesktop(apps, recentPackages, ink, muted, accent,
                             onOpen = ::openApp,
@@ -84,11 +87,17 @@ class MainActivity : ComponentActivity() {
                             onSettings = { openSettings(Settings.ACTION_SETTINGS) })
                     } else {
                         TabletHome(apps, recentPackages, card, ink, muted, accent,
+                            onWallpaper = { wallpaperPicker = true },
                             onOpen = ::openApp, onDrawer = { drawer = true },
                             onAssistant = { assistant = true },
                             onDex = { dex = true; prefs.edit().putBoolean("dex_mode", true).apply() },
                             onSettings = { openSettings(Settings.ACTION_SETTINGS) })
                     }
+                    if (wallpaperPicker) WallpaperPicker(
+                        selected = wallpaper,
+                        onSelect = { wallpaper = it; prefs.edit().putString("wallpaper", it).apply(); wallpaperPicker = false },
+                        onClose = { wallpaperPicker = false }
+                    )
                     if (drawer) AppDrawer(apps, ink, muted, card, { drawer = false }, { drawer = false; openApp(it) })
                     if (assistant) AssistantSheet(ink, muted, card, accent,
                         onClose = { assistant = false },
@@ -184,6 +193,81 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+@Composable
+private fun WallpaperBackground(style: String, modifier: Modifier = Modifier) {
+    val colors = when (style) {
+        "aurora" -> listOf(Color(0xFF071D2B), Color(0xFF124C5B), Color(0xFF132344))
+        "minimal" -> listOf(Color(0xFF172235), Color(0xFF263A54), Color(0xFF101827))
+        else -> listOf(Color(0xFF020817), Color(0xFF102B58), Color(0xFF050B1B))
+    }
+    Box(modifier.background(Brush.linearGradient(colors))) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val stars = listOf(
+                .05f to .12f, .12f to .28f, .19f to .08f, .27f to .39f, .34f to .16f,
+                .42f to .07f, .51f to .31f, .59f to .12f, .67f to .24f, .76f to .09f,
+                .83f to .34f, .91f to .18f, .96f to .43f, .08f to .72f, .22f to .83f,
+                .38f to .68f, .55f to .86f, .72f to .73f, .88f to .82f
+            )
+            stars.forEachIndexed { index, point ->
+                drawCircle(Color.White.copy(alpha = if (index % 3 == 0) .85f else .42f),
+                    radius = if (index % 4 == 0) 2.2f else 1.2f,
+                    center = androidx.compose.ui.geometry.Offset(w * point.first, h * point.second))
+            }
+            if (style == "space") {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF4A8FFF), Color(0xFF173D7B), Color(0xFF07142B)),
+                        center = androidx.compose.ui.geometry.Offset(w * .82f, h * .28f),
+                        radius = w * .30f
+                    ),
+                    radius = w * .29f,
+                    center = androidx.compose.ui.geometry.Offset(w * .82f, h * .28f)
+                )
+                drawCircle(Color(0xFF9ACBFF).copy(alpha = .22f), radius = w * .292f,
+                    center = androidx.compose.ui.geometry.Offset(w * .82f, h * .28f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WallpaperPicker(selected: String, onSelect: (String) -> Unit, onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("Papel de parede") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("space" to "Espaço profundo", "aurora" to "Aurora azul", "minimal" to "Azul minimalista").forEach { (id, label) ->
+                    Surface(
+                        onClick = { onSelect(id) },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected == id) Color(0xFF3979E8).copy(alpha = .16f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (selected == id) androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF3979E8)) else null
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(54.dp, 38.dp).clip(RoundedCornerShape(9.dp)).background(
+                                when (id) {
+                                    "aurora" -> Brush.linearGradient(listOf(Color(0xFF071D2B), Color(0xFF19A7A0), Color(0xFF132344)))
+                                    "minimal" -> Brush.linearGradient(listOf(Color(0xFF172235), Color(0xFF263A54)))
+                                    else -> Brush.linearGradient(listOf(Color(0xFF020817), Color(0xFF245B9A)))
+                                }
+                            ))
+                            Spacer(Modifier.width(12.dp))
+                            Text(label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                            if (selected == id) Icon(Icons.Default.ChevronRight, null, tint = Color(0xFF3979E8))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text("Concluir") } }
+    )
+}
+
 @Composable
 private fun AppIcon(app: PadApp, size: Int, modifier: Modifier = Modifier) {
     AndroidView(modifier = modifier.size(size.dp), factory = { ctx ->
@@ -204,7 +288,7 @@ private fun AppTile(app: PadApp, ink: Color, onClick: () -> Unit, desktop: Boole
 @Composable
 private fun TabletHome(
     apps: List<PadApp>, recentPackages: List<String>, card: Color, ink: Color, muted: Color, accent: Color,
-    onOpen: (PadApp) -> Unit, onDrawer: () -> Unit, onAssistant: () -> Unit, onDex: () -> Unit, onSettings: () -> Unit
+    onOpen: (PadApp) -> Unit, onDrawer: () -> Unit, onAssistant: () -> Unit, onDex: () -> Unit, onSettings: () -> Unit, onWallpaper: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 760.dp
@@ -238,6 +322,9 @@ private fun TabletHome(
                         SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
                         SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
                         SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
+                    Spacer(Modifier.height(9.dp))
+                    SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
+                        SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
                         Spacer(Modifier.weight(1f))
                         Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp)
                     }
