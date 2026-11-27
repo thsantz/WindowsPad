@@ -88,7 +88,7 @@ class MainActivity : Activity() {
         root.addView(subtitle)
 
         search = EditText(this).apply {
-            hint = "Pesquisar aplicativos..."; textSize = 15f; singleLine = true
+            hint = "Pesquisar aplicativos..."; textSize = 15f; setSingleLine(true)
             setTextColor(fg); setHintTextColor(muted); background = rounded(panel, 28f)
             setPadding(20, 8, 20, 8)
             addTextChangedListener(object : android.text.TextWatcher {
