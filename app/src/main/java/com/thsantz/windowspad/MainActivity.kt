@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -68,7 +69,7 @@ class MainActivity : Activity() {
         val theme = TextView(this).apply {
             text = if (dark) "☀" else "☾"; textSize = 24f; gravity = Gravity.CENTER
             setTextColor(fg); background = rounded(panel, 50f)
-            setOnClickListener { Toast.makeText(this@MainActivity, "O tema acompanha a aparência do Android.", Toast.LENGTH_SHORT).show() }
+            setOnClickListener { startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS)) }
         }
         top.addView(theme, LinearLayout.LayoutParams(48, 48))
         root.addView(top)
