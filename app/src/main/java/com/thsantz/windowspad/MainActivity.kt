@@ -322,8 +322,6 @@ private fun TabletHome(
                         SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
                         SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
                         SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
-                    Spacer(Modifier.height(9.dp))
-                    SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
                         SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
                         Spacer(Modifier.weight(1f))
                         Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp)
@@ -348,6 +346,8 @@ private fun TabletHome(
                     SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
                     Spacer(Modifier.height(9.dp))
                     SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
+                    Spacer(Modifier.height(9.dp))
+                    SideCard("Papel de parede", "Escolha seu visual", Icons.Default.DarkMode, card, ink, muted, onWallpaper)
                     Spacer(Modifier.height(12.dp))
                     Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
                     Spacer(Modifier.height(12.dp))
@@ -360,17 +360,17 @@ private fun TabletHome(
 
 @Composable
 private fun HomeHero(accent: Color, compact: Boolean = false) {
-    Box(Modifier.fillMaxWidth().height(if (compact) 172.dp else 190.dp).clip(RoundedCornerShape(28.dp))
-        .background(Brush.linearGradient(listOf(Color(0xFF163B78), Color(0xFF3478D5), Color(0xFF76A9F0)))).padding(if (compact) 18.dp else 24.dp)) {
-        Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(.78f)) {
-            Text("UM ESPAÇO PARA TUDO", color = Color(0xFFC9DEFF), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
-            Spacer(Modifier.height(8.dp))
-            Text("Seu tablet.\nSua experiência.", color = Color.White, fontSize = if (compact) 23.sp else 27.sp, fontWeight = FontWeight.Bold, lineHeight = if (compact) 27.sp else 32.sp)
-            Spacer(Modifier.height(7.dp))
-            Text("Produtividade e entretenimento em harmonia.", color = Color.White.copy(.85f), fontSize = 11.sp, maxLines = 2)
+    Box(Modifier.fillMaxWidth().height(if (compact) 112.dp else 132.dp).padding(horizontal = 4.dp, vertical = 8.dp)) {
+        Column(Modifier.align(Alignment.CenterStart)) {
+            Text("SEU ESPAÇO DIGITAL", color = Color(0xFF8DBBFF), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+            Spacer(Modifier.height(6.dp))
+            Text("Tudo no seu ritmo.", color = Color.White, fontSize = if (compact) 23.sp else 28.sp, fontWeight = FontWeight.SemiBold)
+            Text("Um tablet. Infinitas possibilidades.", color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
         }
-        Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), Modifier.align(Alignment.TopEnd), color = Color.White, fontSize = if (compact) 25.sp else 30.sp, fontWeight = FontWeight.Light)
-        Text(SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR")).format(Date()).replaceFirstChar { it.uppercase() }, Modifier.align(Alignment.BottomEnd), color = Color.White.copy(.8f), fontSize = 10.sp)
+        Column(Modifier.align(Alignment.CenterEnd), horizontalAlignment = Alignment.End) {
+            Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), color = Color.White, fontSize = if (compact) 25.sp else 30.sp, fontWeight = FontWeight.Light)
+            Text(SimpleDateFormat("EEE, d MMM", Locale("pt", "BR")).format(Date()).replaceFirstChar { it.uppercase() }, color = Color.White.copy(alpha = .72f), fontSize = 10.sp)
+        }
     }
 }
 
