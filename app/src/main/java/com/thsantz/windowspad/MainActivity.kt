@@ -58,6 +58,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 private data class PadApp(val name: String, val pkg: String, val icon: Drawable)
 
+private fun normalizeSearchText(value: String): String = java.text.Normalizer.normalize(
+    value.trim().lowercase(Locale("pt", "BR")), java.text.Normalizer.Form.NFD
+).replace(Regex("\\\\p{Mn}+"), "")
+
+private fun PadApp.matchesSearch(query: String): Boolean {
+    val q = normalizeSearchText(query)
+    if (q.isBlank()) return true
+    return normalizeSearchText(name).contains(q) || normalizeSearchText(pkg.substringAfterLast('.')).contains(q)
+}
+
 class MainActivity : ComponentActivity() {
     private val apps = mutableStateListOf<PadApp>()
     private val recentPackages = mutableStateListOf<String>()
@@ -546,7 +556,7 @@ private fun DexDesktop(
                     OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), placeholder = { Text("Pesquisar aplicativos") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
                     Spacer(Modifier.height(10.dp))
                     LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.heightIn(max = 390.dp)) {
-                        items(apps.filter { it.name.contains(search, true) }.take(28), key = { it.pkg }) { AppTile(it, Color.White, onClick = { onOpen(it); startOpen = false }) }
+                        items(apps.filter { it.matchesSearch(search) }.take(28), key = { it.pkg }) { AppTile(it, Color.White, onClick = { onOpen(it); startOpen = false }) }
                     }
                 }
             }
@@ -603,7 +613,7 @@ private fun AppDrawer(apps: List<PadApp>, ink: Color, muted: Color, card: Color,
                     Text("FECHAR", color = Color(0xFF3979E8), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onDismiss() })
                 }
                 OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp), singleLine = true, placeholder = { Text("Buscar um aplicativo") }, leadingIcon = { Icon(Icons.Default.Search, null) })
-                val filtered = apps.filter { it.name.contains(search, true) }
+                val filtered = apps.filter { it.matchesSearch(search) }
                 Text("${filtered.size} aplicativos", color = muted, fontSize = 11.sp)
                 LazyVerticalGrid(columns = GridCells.Adaptive(92.dp), modifier = Modifier.fillMaxSize().padding(top = 8.dp)) {
                     items(filtered, key = { it.pkg }) { AppTile(it, ink, onClick = { onOpen(it) }) }
