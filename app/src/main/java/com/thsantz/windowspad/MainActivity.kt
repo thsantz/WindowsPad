@@ -15,6 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -168,62 +170,116 @@ private fun TabletHome(
     apps: List<PadApp>, card: Color, ink: Color, muted: Color, accent: Color,
     onOpen: (PadApp) -> Unit, onDrawer: () -> Unit, onAssistant: () -> Unit, onDex: () -> Unit, onSettings: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp)) {
-        Row(Modifier.fillMaxWidth().height(76.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("WINDOWS PAD", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                Text("Bom ter você aqui.", color = ink, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Surface(onClick = onDex, shape = CircleShape, color = card) {
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.DesktopWindows, null, tint = accent, modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(8.dp)); Text("Modo DeX", color = ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= 760.dp
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = if (wide) 26.dp else 18.dp)) {
+            Row(Modifier.fillMaxWidth().height(if (wide) 76.dp else 68.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("WINDOWS PAD", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                    Text("Bom ter você aqui.", color = ink, fontSize = if (wide) 24.sp else 21.sp, fontWeight = FontWeight.SemiBold)
                 }
-            }
-        }
-        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-            Column(Modifier.weight(1f)) {
-                Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(28.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF163B78), Color(0xFF3478D5), Color(0xFF76A9F0)))).padding(24.dp)) {
-                    Column(Modifier.align(Alignment.CenterStart)) {
-                        Text("UM ESPAÇO PARA TUDO", color = Color(0xFFC9DEFF), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                        Spacer(Modifier.height(10.dp))
-                        Text("Seu tablet.\nSua experiência.", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Produtividade e entretenimento em harmonia.", color = Color.White.copy(.85f), fontSize = 12.sp)
+                Surface(onClick = onDex, shape = CircleShape, color = card) {
+                    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.DesktopWindows, null, tint = accent, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(7.dp)); Text("Modo DeX", color = ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), Modifier.align(Alignment.TopEnd), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Light)
-                    Text(SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR")).format(Date()).replaceFirstChar { it.uppercase() }, Modifier.align(Alignment.BottomEnd), color = Color.White.copy(.8f), fontSize = 11.sp)
-                }
-                Spacer(Modifier.height(20.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    FeatureCard("Windows Pad AI", "Pesquisa e comandos", "✦", accent, card, ink, muted, Modifier.weight(1f), onAssistant)
-                    FeatureCard("Aplicativos", "Toda a sua biblioteca", "▦", accent, card, ink, muted, Modifier.weight(1f), onDrawer)
-                }
-                Spacer(Modifier.height(18.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Seus aplicativos", color = ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Text("VER TODOS  ›", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onDrawer() })
-                }
-                Spacer(Modifier.height(8.dp))
-                LazyVerticalGrid(columns = GridCells.Adaptive(84.dp), modifier = Modifier.weight(1f)) {
-                    items(apps.take(14)) { AppTile(it, ink, onClick = { onOpen(it) }) }
                 }
             }
-            Column(Modifier.width(210.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("CENTRAL", color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
-                SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
-                SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
-                Spacer(Modifier.weight(1f))
-                Text("Windows Pad  •  0.2.0", color = muted, fontSize = 10.sp)
+            if (wide) {
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        HomeHero(accent)
+                        Spacer(Modifier.height(18.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            FeatureCard("Windows Pad AI", "Pesquisa e comandos", "✦", accent, card, ink, muted, Modifier.weight(1f), onAssistant)
+                            FeatureCard("Aplicativos", "Toda a sua biblioteca", "▦", accent, card, ink, muted, Modifier.weight(1f), onDrawer)
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        AppSection(apps, ink, accent, onOpen, onDrawer, Modifier.weight(1f))
+                    }
+                    Column(Modifier.width(210.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text("CENTRAL", color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                        SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
+                        SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
+                        SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
+                        Spacer(Modifier.weight(1f))
+                        Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp)
+                    }
+                }
+                HomeDock(apps, card, accent, onOpen, onDrawer)
+            } else {
+                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    HomeHero(accent, compact = true)
+                    Spacer(Modifier.height(14.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FeatureCard("Windows Pad AI", "Pesquisa e comandos", "✦", accent, card, ink, muted, Modifier.weight(1f), onAssistant)
+                        FeatureCard("Aplicativos", "Toda a sua biblioteca", "▦", accent, card, ink, muted, Modifier.weight(1f), onDrawer)
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    AppSection(apps, ink, accent, onOpen, onDrawer, Modifier.fillMaxWidth(), compact = true)
+                    Spacer(Modifier.height(18.dp))
+                    Text("CENTRAL", color = muted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                    Spacer(Modifier.height(10.dp))
+                    SideCard("Aparência", "Tema e personalização", Icons.Default.DarkMode, card, ink, muted, onSettings)
+                    Spacer(Modifier.height(9.dp))
+                    SideCard("Conectividade", "Wi-Fi e Bluetooth", Icons.Default.Wifi, card, ink, muted, onSettings)
+                    Spacer(Modifier.height(9.dp))
+                    SideCard("Configurações", "Preferências do tablet", Icons.Default.Settings, card, ink, muted, onSettings)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Spacer(Modifier.height(12.dp))
+                }
+                HomeDock(apps, card, accent, onOpen, onDrawer)
             }
         }
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp).height(62.dp).clip(RoundedCornerShape(22.dp)).background(card).padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            apps.take(6).forEach { app -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { AppIcon(app, 34, Modifier.clickable { onOpen(app) }) } }
-            Icon(Icons.Default.Apps, "Todos os aplicativos", tint = accent, modifier = Modifier.size(28.dp).clickable { onDrawer() })
+    }
+}
+
+@Composable
+private fun HomeHero(accent: Color, compact: Boolean = false) {
+    Box(Modifier.fillMaxWidth().height(if (compact) 172.dp else 190.dp).clip(RoundedCornerShape(28.dp))
+        .background(Brush.linearGradient(listOf(Color(0xFF163B78), Color(0xFF3478D5), Color(0xFF76A9F0)))).padding(if (compact) 18.dp else 24.dp)) {
+        Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(.78f)) {
+            Text("UM ESPAÇO PARA TUDO", color = Color(0xFFC9DEFF), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+            Spacer(Modifier.height(8.dp))
+            Text("Seu tablet.\nSua experiência.", color = Color.White, fontSize = if (compact) 23.sp else 27.sp, fontWeight = FontWeight.Bold, lineHeight = if (compact) 27.sp else 32.sp)
+            Spacer(Modifier.height(7.dp))
+            Text("Produtividade e entretenimento em harmonia.", color = Color.White.copy(.85f), fontSize = 11.sp, maxLines = 2)
         }
+        Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), Modifier.align(Alignment.TopEnd), color = Color.White, fontSize = if (compact) 25.sp else 30.sp, fontWeight = FontWeight.Light)
+        Text(SimpleDateFormat("EEEE, d 'de' MMMM", Locale("pt", "BR")).format(Date()).replaceFirstChar { it.uppercase() }, Modifier.align(Alignment.BottomEnd), color = Color.White.copy(.8f), fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun AppSection(
+    apps: List<PadApp>, ink: Color, accent: Color, onOpen: (PadApp) -> Unit, onDrawer: () -> Unit,
+    modifier: Modifier, compact: Boolean = false
+) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Seus aplicativos", color = ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("VER TODOS  ›", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onDrawer() })
+        }
+        Spacer(Modifier.height(8.dp))
+        if (compact) {
+            LazyVerticalGrid(columns = GridCells.Adaptive(76.dp), modifier = Modifier.fillMaxWidth().height(270.dp), userScrollEnabled = false) {
+                items(apps.take(12)) { AppTile(it, ink, onClick = { onOpen(it) }) }
+            }
+        } else {
+            LazyVerticalGrid(columns = GridCells.Adaptive(84.dp), modifier = Modifier.fillMaxSize()) {
+                items(apps.take(14)) { AppTile(it, ink, onClick = { onOpen(it) }) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeDock(apps: List<PadApp>, card: Color, accent: Color, onOpen: (PadApp) -> Unit, onDrawer: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp).height(60.dp).clip(RoundedCornerShape(22.dp)).background(card).padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        apps.take(6).forEach { app -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { AppIcon(app, 32, Modifier.clickable { onOpen(app) }) } }
+        Icon(Icons.Default.Apps, "Todos os aplicativos", tint = accent, modifier = Modifier.size(27.dp).clickable { onDrawer() })
     }
 }
 
