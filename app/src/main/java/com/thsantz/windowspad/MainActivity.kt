@@ -54,12 +54,15 @@ import java.util.Locale
 private data class PadApp(val name: String, val pkg: String, val icon: Drawable)
 
 class MainActivity : ComponentActivity() {
-    private val apps = mutableListOf<PadApp>()
+    private val apps = mutableStateListOf<PadApp>()
+    private val recentPackages = mutableStateListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         loadApps()
         val prefs = getSharedPreferences("windowspad", MODE_PRIVATE)
+        recentPackages.clear()
+        recentPackages.addAll(prefs.getString("recent_packages", "").orEmpty().split("|").filter { it.isNotBlank() }.take(12))
         setContent {
             var dex by remember { mutableStateOf(prefs.getBoolean("dex_mode", false)) }
             var drawer by remember { mutableStateOf(false) }
@@ -74,13 +77,13 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = if (dark) darkColorScheme(primary = accent) else lightColorScheme(primary = accent)) {
                 Surface(Modifier.fillMaxSize(), color = bg) {
                     if (dex) {
-                        DexDesktop(apps, ink, muted, accent,
+                        DexDesktop(apps, recentPackages, ink, muted, accent,
                             onOpen = ::openApp,
                             onAssistant = { assistant = true },
                             onTablet = { dex = false; prefs.edit().putBoolean("dex_mode", false).apply() },
                             onSettings = { openSettings(Settings.ACTION_SETTINGS) })
                     } else {
-                        TabletHome(apps, card, ink, muted, accent,
+                        TabletHome(apps, recentPackages, card, ink, muted, accent,
                             onOpen = ::openApp, onDrawer = { drawer = true },
                             onAssistant = { assistant = true },
                             onDex = { dex = true; prefs.edit().putBoolean("dex_mode", true).apply() },
@@ -98,7 +101,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        loadApps()
+    }
+
     private fun loadApps() {
+        apps.clear()
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         @Suppress("DEPRECATION")
         packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL).forEach {
@@ -108,7 +117,14 @@ class MainActivity : ComponentActivity() {
         apps.sortBy { it.name.lowercase(Locale.getDefault()) }
     }
 
-    private fun openApp(app: PadApp) { packageManager.getLaunchIntentForPackage(app.pkg)?.let { startActivity(it) } }
+    private fun openApp(app: PadApp) {
+        recentPackages.remove(app.pkg)
+        recentPackages.add(0, app.pkg)
+        while (recentPackages.size > 12) recentPackages.removeAt(recentPackages.lastIndex)
+        getSharedPreferences("windowspad", MODE_PRIVATE).edit()
+            .putString("recent_packages", recentPackages.joinToString("|")).apply()
+        packageManager.getLaunchIntentForPackage(app.pkg)?.let { startActivity(it) }
+    }
 
     private fun openSettings(action: String) {
         try { startActivity(Intent(action)) } catch (_: Exception) { startActivity(Intent(Settings.ACTION_SETTINGS)) }
@@ -167,7 +183,7 @@ private fun AppTile(app: PadApp, ink: Color, onClick: () -> Unit, desktop: Boole
 
 @Composable
 private fun TabletHome(
-    apps: List<PadApp>, card: Color, ink: Color, muted: Color, accent: Color,
+    apps: List<PadApp>, recentPackages: List<String>, card: Color, ink: Color, muted: Color, accent: Color,
     onOpen: (PadApp) -> Unit, onDrawer: () -> Unit, onAssistant: () -> Unit, onDex: () -> Unit, onSettings: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -206,7 +222,7 @@ private fun TabletHome(
                         Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp)
                     }
                 }
-                HomeDock(apps, card, accent, onOpen, onDrawer)
+                HomeDock(apps, recentPackages, card, accent, onOpen, onDrawer)
             } else {
                 Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
                     HomeHero(accent, compact = true)
@@ -275,10 +291,11 @@ private fun AppSection(
 }
 
 @Composable
-private fun HomeDock(apps: List<PadApp>, card: Color, accent: Color, onOpen: (PadApp) -> Unit, onDrawer: () -> Unit) {
+private fun HomeDock(apps: List<PadApp>, recentPackages: List<String>, card: Color, accent: Color, onOpen: (PadApp) -> Unit, onDrawer: () -> Unit) {
+    val quickApps = (recentPackages.mapNotNull { pkg -> apps.firstOrNull { it.pkg == pkg } } + apps).distinctBy { it.pkg }.take(6)
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp).height(60.dp).clip(RoundedCornerShape(22.dp)).background(card).padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-        apps.take(6).forEach { app -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { AppIcon(app, 32, Modifier.clickable { onOpen(app) }) } }
+        quickApps.forEach { app -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { AppIcon(app, 32, Modifier.clickable { onOpen(app) }) } }
         Icon(Icons.Default.Apps, "Todos os aplicativos", tint = accent, modifier = Modifier.size(27.dp).clickable { onDrawer() })
     }
 }
@@ -307,15 +324,16 @@ private fun SideCard(title: String, sub: String, icon: androidx.compose.ui.graph
 
 @Composable
 private fun DexDesktop(
-    apps: List<PadApp>, ink: Color, muted: Color, accent: Color,
+    apps: List<PadApp>, recentPackages: List<String>, ink: Color, muted: Color, accent: Color,
     onOpen: (PadApp) -> Unit, onAssistant: () -> Unit, onTablet: () -> Unit, onSettings: () -> Unit
 ) {
     var search by remember { mutableStateOf("") }
     var startOpen by remember { mutableStateOf(false) }
     var panelOpen by remember { mutableStateOf(false) }
+    val desktopApps = (recentPackages.mapNotNull { pkg -> apps.firstOrNull { it.pkg == pkg } } + apps).distinctBy { it.pkg }.take(12)
     Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF08172F), Color(0xFF173C68), Color(0xFF245B8C))))) {
         Row(Modifier.fillMaxSize().padding(start = 22.dp, top = 20.dp, bottom = 82.dp)) {
-            Column(Modifier.width(104.dp)) { apps.take(12).forEach { AppTile(it, Color.White, { onOpen(it) }, true) } }
+            Column(Modifier.width(104.dp)) { desktopApps.forEach { AppTile(it, Color.White, { onOpen(it) }, true) } }
             Column(Modifier.fillMaxSize().padding(start = 20.dp)) {
                 Text("WINDOWS PAD", color = Color.White.copy(.75f), fontSize = 12.sp, letterSpacing = 2.sp)
                 Text("Área de trabalho", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Light)
@@ -357,7 +375,7 @@ private fun DexDesktop(
             Icon(Icons.Default.Home, "Iniciar", tint = Color(0xFF83B6FF), modifier = Modifier.size(29.dp).clickable { startOpen = !startOpen; panelOpen = false })
             Spacer(Modifier.width(10.dp))
             Text("Pesquisar", color = Color.White.copy(.7f), fontSize = 12.sp, modifier = Modifier.weight(1f).clickable { startOpen = true; panelOpen = false })
-            apps.take(5).forEach { app -> AppIcon(app, 32, Modifier.padding(horizontal = 7.dp).clickable { onOpen(app) }) }
+            desktopApps.take(5).forEach { app -> AppIcon(app, 32, Modifier.padding(horizontal = 7.dp).clickable { onOpen(app) }) }
             Icon(Icons.Default.Notifications, "Central de controle", tint = Color.White, modifier = Modifier.padding(horizontal = 8.dp).size(22.dp).clickable { panelOpen = !panelOpen; startOpen = false })
             Column(Modifier.clickable { panelOpen = !panelOpen }, horizontalAlignment = Alignment.End) {
                 Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), color = Color.White, fontSize = 12.sp)
