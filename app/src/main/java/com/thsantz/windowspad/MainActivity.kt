@@ -452,7 +452,7 @@ class MainActivity : Activity() {
         listOf(
             Triple("Wi-Fi", "Configurações de rede", Intent(Settings.ACTION_WIFI_SETTINGS)),
             Triple("Bluetooth", "Dispositivos conectados", Intent(Settings.ACTION_BLUETOOTH_SETTINGS)),
-            Triple("Notificações", "Preferências de notificações", Intent(Settings.ACTION_NOTIFICATION_SETTINGS)),
+            Triple("Notificações", "Preferências de notificações", Intent(Settings.ACTION_SETTINGS)),
             Triple("Sistema", "Configurações completas", Intent(Settings.ACTION_SETTINGS))
         ).forEach { item ->
             panel.addView(label("◉   " + item.first + "     ›", 14f, true).apply {
