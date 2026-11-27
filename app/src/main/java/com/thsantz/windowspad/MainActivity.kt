@@ -38,6 +38,14 @@ class MainActivity : Activity() {
         buildScreen()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::appsGrid.isInitialized) {
+            loadApps()
+            renderApps(search.text?.toString().orEmpty())
+        }
+    }
+
     private fun loadApps() {
         val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
         apps.clear()
@@ -108,8 +116,15 @@ class MainActivity : Activity() {
         taskbar.addView(start, LinearLayout.LayoutParams(54, 42))
         val label = text("Windows Pad", 14f, true).apply { gravity = Gravity.CENTER }
         taskbar.addView(label, LinearLayout.LayoutParams(0, 42, 1f))
-        val clock = text(java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()), 14f, true).apply { gravity = Gravity.CENTER }
-        taskbar.addView(clock, LinearLayout.LayoutParams(64, 42))
+        val clock = android.widget.TextClock(this).apply {
+            format24Hour = "EEE, d MMM · HH:mm"
+            format12Hour = "EEE, d MMM · h:mm a"
+            textSize = 12f
+            setTextColor(muted)
+            gravity = Gravity.CENTER
+            isSingleLine = true
+        }
+        taskbar.addView(clock, LinearLayout.LayoutParams(116, 42))
         val taskParams = LinearLayout.LayoutParams(-1, 62); taskParams.topMargin = 8
         root.addView(taskbar, taskParams)
         setContentView(root)
