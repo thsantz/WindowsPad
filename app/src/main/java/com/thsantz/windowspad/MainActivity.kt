@@ -152,14 +152,34 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun executeCommand(raw: String, onDex: (Boolean) -> Unit) {
-        val q = raw.trim().lowercase(Locale("pt", "BR"))
+        val normalized = java.text.Normalizer.normalize(
+            raw.trim().lowercase(Locale("pt", "BR")),
+            java.text.Normalizer.Form.NFD
+        ).replace(Regex("\\p{Mn}+"), "")
+        val q = normalized
+            .replace(Regex("\\b( por favor| pra mim| para mim)\\b"), " ")
+            .replace(Regex("\\b(abrir|abra|abre|iniciar|inicie|executar|execute|rodar|acessar|app|aplicativo|aplicativos)\\b"), " ")
+            .replace(Regex("\\s+"), " ").trim()
+
         when {
-            q.contains("dex") || q.contains("desktop") -> onDex(true)
-            q.contains("tablet") || q.contains("início") -> onDex(false)
-            q.contains("configura") -> openSettings(Settings.ACTION_SETTINGS)
-            q.contains("wi-fi") || q.contains("wifi") -> openSettings(Settings.ACTION_WIFI_SETTINGS)
-            q.contains("bluetooth") -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS)
-            else -> apps.firstOrNull { it.name.contains(q, true) }?.let(::openApp)
+            normalized.contains("modo dex") || normalized == "dex" || normalized.contains("desktop") -> onDex(true)
+            normalized.contains("modo tablet") || normalized.contains("tela inicial") || normalized == "tablet" || normalized.contains("voltar ao inicio") -> onDex(false)
+            normalized.contains("configura") || normalized.contains("ajustes") -> openSettings(Settings.ACTION_SETTINGS)
+            normalized.contains("wi fi") || normalized.contains("wifi") || normalized.contains("rede") -> openSettings(Settings.ACTION_WIFI_SETTINGS)
+            normalized.contains("bluetooth") -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS)
+            normalized.contains("notifica") -> openSettings("android.settings.NOTIFICATION_SETTINGS")
+            normalized.contains("tela") && (normalized.contains("brilho") || normalized.contains("display")) -> openSettings("android.settings.DISPLAY_SETTINGS")
+            q.isBlank() -> return
+            else -> {
+                val match = apps.firstOrNull { app ->
+                    val name = java.text.Normalizer.normalize(
+                        app.name.lowercase(Locale("pt", "BR")),
+                        java.text.Normalizer.Form.NFD
+                    ).replace(Regex("\\p{Mn}+"), "")
+                    name == q || name.startsWith(q) || name.contains(q) || app.pkg.substringAfterLast('.').contains(q)
+                }
+                match?.let(::openApp)
+            }
         }
     }
 }
