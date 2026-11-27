@@ -245,7 +245,7 @@ private fun TabletHome(
                     Text("Windows Pad  •  0.3.0", color = muted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
                     Spacer(Modifier.height(12.dp))
                 }
-                HomeDock(apps, card, accent, onOpen, onDrawer)
+                HomeDock(apps, recentPackages, card, accent, onOpen, onDrawer)
             }
         }
     }
